@@ -1,0 +1,505 @@
+---
+title: "Data Visualization 2024: Student Project"
+author: "Matriculation Number: 22300141"
+output: 
+  html_document:
+    theme: simplex
+    toc: yes
+    toc_float:
+      smooth_scroll: true
+      collapsed: true
+    number_sections: true
+---
+<style>
+/* Additional Styles */
+.author {
+  color: #808080; /* Gray color for author */
+}
+
+body {
+  font-size: 14px; /* Font size for all text */
+  line-height: 2.0; /* Adjust line height for better readability */
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold; /* Make headings bold */
+}
+
+p, ul, ol {
+  font-size: 16px; /* Increase font size for paragraphs and lists */
+  line-height: 1.6; /* Adjust line height for better readability */
+  color: #333; /* Dark gray font color for paragraphs and lists */
+}
+
+</style>
+
+<br style="line-height: 0;">
+
+# Libraries
+<hr>
+
+Installing and loading the packages:
+
+
+```{r Code: Packages}
+#install.packages('tidyverse')
+#install.packages('patchwork')
+#install.packages('ggrepel')
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(patchwork)
+library(ggrepel)
+```
+
+
+<br style="line-height: .1;">
+
+# TCGA expression data
+
+
+
+## Load and preprocess data
+<hr>
+
+Loading the 'TCGA Expression Data' dataset and selecting the first 200 samples for genes 1-43:
+
+```{r Code: Expression Data}
+
+# Loading the data
+dataset_cancer <- read.csv("~/Downloads/DataVis_R_2024_FinalProject/tcga_cancer.csv")
+dataset_cancer_labels <- read.csv("~/Downloads/DataVis_R_2024_FinalProject/tcga_cancer_labels.csv")
+
+# Selecting the first 200 samples for gene 1 to gene 43 
+gene1_43 <- dataset_cancer %>% 
+  select(sample_number = `...1`, gene_1:gene_43) %>%  # Changes the first column name to "sample_number" and selects gene 1-43
+  slice(1:200) 
+
+# Selecting the first 200 samples from the cancer labels data set
+sample_labels200 <- dataset_cancer_labels %>% 
+  slice(1:200) 
+
+```
+<br style="line-height: .1;">
+
+## Plotting
+<hr>
+
+
+### Expression distribution: Gene-1
+
+Plotting a **histogram** to visualize the distribution of expression values of gene 1:
+
+```{r Code: Histogram, fig.width=5, fig.height=5}
+
+# Extracting the gene 1 data into a variable called g1
+g1 <- gene1_43$gene_1
+
+# Creating a histogram to show the distribution of gene 1 expression
+exp_distribution <- ggplot(data = NULL, aes(x = g1)) + 
+  geom_histogram(fill = 'grey', color = 'black', binwidth = 0.4, alpha = 0.8) +  # Plots histogram with specific aesthetics
+  labs(title = 'Expression Gene 1', x = 'RNA Counts', y = 'Count') +  # Adds title and axis labels
+  theme_bw() +  # Uses a black and white theme
+  theme(panel.grid = element_blank()) +  # Removes grid lines
+  theme(axis.text = element_text(size = 14, color = 'black', family = 'Arial'), # Customizes axis labels
+        axis.title = element_text(size = 14, face = "bold", family = 'Arial'), # Customizes axis titles
+        plot.title = element_text(size = 16, family = 'Arial'), # Customizes plot title
+        panel.border = element_rect(linewidth = 1.5, color = "black")) +  # Customizes plot border
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 40))  # Sets y-axis limits to (0,40) and removes expansion
+
+print(exp_distribution)
+```
+
+<br style="line-height: 0;">
+
+Plotting a **histogram** with an alternative binwidth of 0.2 to visualize the same distribution in greater detail:
+
+```{r Code: Alternate Histogram, fig.width=5, fig.height=5}
+# Creating an alternative histogram for gene 1 expression
+alt_exp_distribution <- ggplot(data = NULL, aes(x = g1)) + 
+  geom_histogram(fill = 'grey', color = 'black', binwidth = 0.2, alpha = 0.8) +  # Histogram settings with binwidth = 0.2
+  labs(title = 'Expression Gene 1', x = 'RNA Counts', y = 'Count') +  # Adds title and axis labels
+  theme_bw() +  # Uses black and white theme
+  theme(panel.grid = element_blank(),  # Removes grid lines
+        axis.text = element_text(size = 14, color = 'black', family = 'Arial'),  # Customizes axis labels
+        axis.title = element_text(size = 14, face = "bold", family = 'Arial'),
+        plot.title = element_text(size = 16, family = 'Arial'),  # Customizes plot title
+        panel.border = element_rect(linewidth = 1.5, color = "black")) +  # Customizes plot border
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 25))  # Sets y-axis limits to (0, 25) and removes expansion
+
+print(alt_exp_distribution)
+```
+
+The first histogram, with a bin width of **0.4**, provides a balanced perspective of the distribution of RNA count values, with each bar indicating a larger range of counts, allowing for overall patterns to be recognised while also capturing some finer details in the data.
+
+A smaller bin width, such as **0.2**, could be used to examine the distribution more thoroughly. This reduced bin width may reveal smaller variability in RNA counts among samples. The increasing number of bars indicating smaller intervals of RNA counts may, however, cause the histogram to appear more jagged or noisy.
+
+<br style="line-height: .1;">
+
+### Gene expression correlation
+
+Plotting a **scatter plot** to analyse the relationship between Gene 1 and Gene 12:
+
+```{r Code: Scatter Plot, fig.width=5, fig.height=5}
+
+# Assigning the columns 'gene_1' and 'gene_12' from dataset gene1_43 to a new dataset gene1_12
+gene1_12 <- gene1_43[, c('gene_1', 'gene_12')]
+
+# Calculating the Pearson correlation coefficient between Gene-1 and Gene-12
+correlation_coefficient <- cor(gene1_12$gene_1, gene1_12$gene_12, method = "pearson")
+
+# Plotting a scatter plot to show the relationship between Gene 1 and Gene 12
+exp_correlation <- ggplot(gene1_12, aes(x = gene_1, y = gene_12)) +
+  geom_smooth(method = "lm", se = TRUE, color = "black", fill = "grey", linetype = 'dashed', alpha = 0.5) +  # Adds linear regression line with confidence interval
+  geom_point(color = "black", size = 3, shape = 21, fill = "lightblue", stroke = .4) +  # Adds datapoints with customized appearance
+  labs(title = "Relationship between Gene 1 and Gene 12", x = "Gene 1", y = "Gene 12") +  # Adds plot title and axis labels
+  annotate("text", x = Inf, y = Inf,
+           label = sprintf("R = %.3f", correlation_coefficient),
+           hjust = 1.2, vjust = 2.5, size = 5, color = "black") +  # Adds annotation for Pearson correlation coefficient
+  theme_bw() +  # Uses a black and white theme
+  theme(axis.text = element_text(size = 14, color = 'black', family = 'Arial'),  # Customizes axis labels
+        axis.title = element_text(size = 14, face = "bold", family = 'Arial'),  # Customizes axis titles
+        plot.title = element_text(size = 16, family = 'Arial'),  # Customizes plot title
+        panel.border = element_rect(linewidth = 1.5, color = "black"))  # Customizes plot border
+
+print(exp_correlation)
+```
+
+Correlation is a mutual link between two or more things. The correlation coefficient (R) is a numerical value that indicates the degree and direction of a relationship between two variables. On a scale of **-1 to 1**, a coefficient value closer to 1 implies a **high positive correlation**, while one closer to -1 suggests a **high negative correlation**.
+
+The calculated value (-0.062) is closer to zero, indicating a **weak negative association** between Gene-1 and Gene-12, potentially due to independent regulation or involvement in different cellular processes.
+
+The grey area around the regression line in a scatter plot is the **confidence interval**. It shows the range where we expect the true regression line to fall, usually with **95% confidence**. This region represents the uncertainty of the predictions: a wider grey area means more uncertainty, while a narrower one means less.
+
+<br style="line-height: .1;">
+
+### Class proportions
+
+Plotting a **stacked bar chart** displaying the percentage of gene classes:
+
+```{r Code: Stacked Bar Chart, fig.width=10, fig.height=3, fig.align='left'}
+
+# Calculating proportions and counts of each class in sample_labels200
+class_summary <- sample_labels200 %>%
+  count(Class) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Plotting a stacked bar chart to visualize class proportions
+class_proportions <- ggplot(class_summary, aes(x = percentage, y = "", fill = Class)) +
+  geom_bar(stat = "identity", color = "black", width = 1.2) +  # Adjusts width of bars
+  scale_fill_manual(values = c("#fed9a6", "#decbe4", "#ccebc5", "#b3cde3", "#fbb4ae")) +  # Defines custom fill colors
+  geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 5, color = "black") +  # Adds text labels
+  labs(title = "Distribution of Classes (n = 200)", x = "Percentage (%)", y = "") +  # Adds plot title and axis labels
+  theme_minimal() +  # Uses a minimal theme
+  theme(
+    plot.title = element_text(size = 16, family = 'Arial', margin = margin(0, 0, 15, 30)),  # Customizes plot title
+    legend.title = element_text(size = 14),  # Customizes legend title
+    axis.title.x = element_text(size = 16, face = "bold", family = 'Arial'),  # Customizes x-axis title
+    axis.text.x = element_text(size = 14, color = 'black', family = 'Arial'),  # Customizes x-axis text
+    legend.spacing.x = unit(0.1, 'cm'),  # Adjusts spacing in legend
+    legend.position = "top",  # Positions legend at the top
+    legend.margin = margin(0, 0, 0, 0),  # Adjusts legend margin
+    panel.grid.major = element_blank(),  # Removes major grid lines
+    axis.ticks.x = element_line(color = "black"),  # Keeps ticks on the x-axis
+    axis.ticks.length.x = unit(5, "pt"),  # Adjusts length of ticks on x-axis
+    axis.ticks.y = element_blank(),  # Removes ticks on y-axis
+    axis.text.y = element_text(size = 12, color = 'black', family = 'Arial'),  # Customizes y-axis text
+    aspect.ratio = .09  # Adjusts aspect ratio of the plot
+  ) +
+  guides(fill = guide_legend(reverse = TRUE))  # Reverses order of legend items
+
+print(class_proportions)
+```
+
+In general, the plot uses distinguishable colors for visual clarity, making it engaging and aesthetically pleasing. However, for scientific or professional presentations, pastel colors are less suitable. They don't account for color-blindness, with red and green variations being problematic. Contrasting and bold colors would be better, conveying precision and professionalism.
+
+<br style="line-height: .1;">
+
+### Combining the plots
+
+Combining the histogram (binwidth=0.4), scatter plot, and the stacked bar chart using the **patchwork** package:
+
+```{r Code: Combined Plots, fig.width=8, fig.height=7}
+
+# Combining exp_distribution, exp_correlation, and class_proportions plots into a single layout
+(exp_distribution +  
+    exp_correlation +
+    plot_layout(widths = c(1, 2))) / # Adjusts widths of exp_distribution and exp_correlation (columns)
+  class_proportions + 
+  plot_annotation(tag_levels = "I") + # Annotates each plot with the respective roman numeral
+  plot_layout(heights = c(1, .3)) # Adjusts heights of the first and second rows
+```
+
+<br style="line-height: .1;">
+
+# Human genome
+
+## Load and preprocess data
+<hr>
+
+Loading and preprocessing the 'Human Genome' dataset for visualization:
+
+```{r Code: Prepare Human Genome data}
+
+# Loading the data set
+dataset_hg38 <- read_tsv("~/Downloads/DataVis_R_2024_FinalProject/hg38_genes.tsv", show_col_types = FALSE)
+
+# Filtering for gene types: “protein_coding”, “lncRNA”, “processsed_pseudogenes” or “transcribed_unprocessed_pseudogene”
+filtered_hg38 <- dataset_hg38 %>%
+  filter(gene_type %in% c("protein_coding", "lncRNA", "processed_pseudogene", "transcribed_unprocessed_pseudogene"))
+
+# Renaming 'protein-coding' to 'mRNA' and making a new group called 'Pseudo' for 'processed_pseudogene' & 'transcribed_unprocessed_pseudogene' 
+renamed_hg38 <- filtered_hg38 %>%
+  mutate(gene_type = case_when(
+    gene_type == "protein_coding" ~ "mRNA", # Rename 'protein_coding' to 'mRNA'
+    gene_type %in% c("processed_pseudogene", "transcribed_unprocessed_pseudogene") ~ "Pseudo", # Renames pseudogenes to 'Pseudo'
+    TRUE ~ gene_type)) # Keeps other gene types unchanged
+
+# Calculating gene length and filtering based on length
+final_hg38 <- renamed_hg38 %>%
+  mutate(length = end_gene - start_gene) %>% # Calculates gene length by subtracting 'start_gene' from 'end_gene'
+  filter(length > 1000 & length <= 20000) # Keeps only genes with lengths >1000 and <= 20000
+
+```
+
+<br style="line-height: .1;">
+
+## Plotting
+
+<hr>
+
+### Gene count
+
+Plotting a **classical bar chart** to display the total count of genes per class:
+
+```{r Code: CLassical Bar Chart, fig.width=5, fig.height=5}
+
+# Summarizing total counts of genes per class
+counts_hg38 <- final_hg38 %>%
+  group_by(gene_type) %>%
+  summarize(count = n())
+
+# Plotting a classical bar chart 
+bar_plt <- ggplot(counts_hg38, aes(x = reorder(gene_type, count), y = count, fill = gene_type)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8, width = .8) +  # Adds bars with custom fill and borders
+  scale_fill_manual(values = c("#1b9e77", "#d95f02", "#7570b3")) +  # Defines custom fill colors
+  labs(title = "Total Gene Number", x = "Class", y = "Count") +  # Adds plot title and axis labels
+  theme_bw() +  # Uses a black and white theme
+  theme(
+    plot.title = element_text(size = 18, family = 'Arial'),  # Customizes plot title
+    panel.grid.major.y = element_line(color = "gray", linetype = "dashed"),  # Adds dashed grid lines on y-axis
+    panel.grid.major.x = element_blank(),  # Removes grid lines on x-axis
+    panel.grid.minor = element_blank(),  # Removes minor grid lines
+    axis.title.x = element_text(size = 16, family = "Arial", face = "bold"),  # Customizes x-axis title
+    axis.title.y = element_text(size = 16, family = "Arial", face = "bold"),  # Customizes y-axis title
+    axis.text.x = element_text(size = 14, family = "Arial", color = "black", angle = 45, hjust = 1),  # Customizes x-axis text
+    axis.text.y = element_text(size = 14, family = "Arial", color = "black"),  # Customizes y-axis text
+    axis.ticks.x = element_blank(),  # Removes x-axis ticks
+    legend.position = "none"  # Removes legend
+  ) +
+  scale_y_continuous(limits = c(0, 4000), expand = c(0, 0))  # Sets y-axis limits to (0,4000) and expand
+
+print(bar_plt)
+
+```
+
+<br style="line-height: .1;">
+
+### Length distribution
+
+Plotting a **density plot** to visualize the length distribution in each class:
+
+```{r Code: Density Plot, fig.width=8, fig.height=5}
+
+# Calculating the median length of genes by gene_type
+median_lengths <- aggregate(length ~ gene_type, data = final_hg38, FUN = median)
+median_lengths <- median_lengths[c(3, 2, 1),]  # Reorders rows for visualization clarity
+rownames(median_lengths) <- c("1", "2", "3")  # Renames row names for clarity in legend
+
+# Plotting a density plot showing the distribution of gene lengths by gene_type
+density_plt <- ggplot(final_hg38, aes(x = length, fill = gene_type)) +
+  geom_vline(data = median_lengths, aes(xintercept = length, color = gene_type, linetype = rev(gene_type)),
+             linewidth = 1, show.legend = FALSE) +  # Adds vertical lines for median lengths
+  geom_density(color = 'black', alpha = 0.5) +  # Adds density curves with custom line color and transparency
+  scale_fill_manual(values = c("#1b9e77", "#d95f02", "#7570b3")) +  # Defines manual fill colors
+  scale_color_manual(values = c("#1b9e77", "#d95f02", "#7570b3")) +  # Defines manual line colors
+  labs(title = "Length Distribution of Gene Classes",
+       x = "Gene Length (bp)", y = "Density") +  # Adds plot title and axis labels
+  theme_minimal() +  # Uses a minimal theme
+  theme(
+    legend.position = c(0.9, 0.9),  # Adjusts legend position
+    legend.title = element_blank(),  # Removes legend title
+    plot.title = element_text(size = 18, family = "Arial"),  # Customizes plot title
+    axis.text = element_text(size = 14, family = "Arial"),  # Customizes axis text
+    axis.title = element_text(size = 16, family = "Arial", face = "bold"),  # Customizes axis titles
+    panel.grid.major = element_line(color = "lightgray"),  # Adds major grid lines
+    panel.grid.minor = element_blank(),  # Removes minor grid lines
+  ) +
+  scale_y_continuous(expand = c(0, 0)) +  # Adjusts y-axis limits
+  scale_x_continuous(expand = c(0.04, 0.01)) +  # Adjusts x-axis limits
+  guides(fill = guide_legend(reverse = TRUE))  # Reverses order of legend items
+
+print(density_plt)
+```
+
+
+The **density plot** is useful for comparing distributions when there isn't much overlap. The overlapping areas facilitate direct comparison between distributions, while median lines offer a quick reference to the central tendency of each class. This plot provides a clear visual representation of the overall distribution and smoothness of the data. However, if there's a lot of overlap, it can be hard to interpret.
+
+Another effective plot type is the **box plot** (displayed below), which is intuitive because it clearly displays the central tendencies and spreads of gene lengths across various gene types. Each box in the plot represents the median of the gene lengths for a specific gene type, and the vertical extent of the box indicates the spread or variability of the data within that gene type's distribution. By presenting multiple box plots side by side, one for each gene type, the median gene lengths can be compared, and the variations across different gene types can be understood.
+
+<br style="line-height: .1;">
+
+Plotting a **box plot** to visualize the length distribution in each class:
+
+```{r Code: Box Plot, fig.width=8, fig.height=6}
+# Creating a box plot to visualize the distribution of gene lengths by gene type
+box_plt <- ggplot(final_hg38, aes(x = gene_type, y = length, fill = gene_type)) +
+  geom_boxplot(alpha = 0.8, outlier.shape = 21, outlier.size = 2) +  # Adds boxplot with custom aesthetics
+  theme_bw() +  # Uses a black and white theme
+  labs(x = 'Gene Type', y = 'Gene Length (bp)', title = 'Length Distribution of Gene Classes') +  # Adds axis labels and title
+  scale_fill_manual(values = c('#1b9e77', '#d95f02', '#7570b3')) +  # Defines manual fill colors
+  scale_color_manual(values = c('#1b9e77', '#d95f02', '#7570b3')) +  # Defines manual point colors
+  theme(
+    legend.position = 'none',
+    plot.title = element_text(size = 16, family = "Arial"),  # Customizes plot title
+    axis.text = element_text(size = 14, family = "Arial"),  # Customizes axis text
+    axis.title = element_text(size = 16, family = "Arial", face = "bold"),  # Customizes axis titles
+    axis.ticks.length = unit(0.3, "cm"),  # Sets length of axis ticks
+    panel.grid.major = element_line(color = "lightgray"),  # Adds major grid lines
+    panel.grid.minor = element_blank(),  # Removes minor grid lines
+    axis.line = element_line(linewidth = 0.5, colour = "black")  # Customizes axis lines
+  ) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 20000))  # Adjusts y-axis limits and removes expansion
+
+print(box_plt)
+```
+
+<br style="line-height: 0;">
+
+Additionally, a combination of a **box plot** and **jitter plot** could be considered for further analysis. This approach would provide insights into both the central tendencies and the density of data points within each gene type category, offering a balanced look at gene length distribution across types.
+
+<br style="line-height: .1;">
+
+### Include figure
+
+Combining the bar plot and the density plot generated from the 'Human Genome' dataset using the **patchwork** package:
+
+```{r}
+# Combining bar plot and density plot into a single layout
+bar_density_plt <- bar_plt + density_plt + plot_layout(widths = c(.7, 2)) + 
+  plot_annotation(tag_levels = "A") 
+```
+
+<br style="line-height: .1;">
+
+A **PNG image** of the bar plot and density plot combined:
+
+![Figure 1: Overview human genes. A: Total number per gene class. B: Gene length distribution per class. Vertical lines represent median gene length per class.](/Users/mariamzaidi/Desktop/coding/bar_density_plt.png)
+
+<br style="line-height: .1;">
+
+# Differential gene expression
+
+## Load and prepare data
+<hr>
+
+Loading the 'Differential Gene Expression' dataset and selecting the top 2000 genes based on descending baseMean values:
+
+```{r Code: Preparing DeSeq Data}
+
+# Reading in the DESeq2 dataset from a delimited file
+dataset_deseq <- read.delim("~/Downloads/DataVis_R_2024_FinalProject/deseq2_dummy.txt")
+
+# Arranging the dataset by descending baseMean and selecting the top 2000 rows
+deseq_arranged <- dataset_deseq %>%
+  arrange(desc(baseMean)) %>%
+  slice_head(n = 2000)
+```
+
+<br style="line-height: .1;">
+
+## Plotting
+<hr>
+
+### Volcano plots
+
+Plotting a **volcano plot** to visualise the differentially expressed genes:
+
+```{r Code: Volcano Plot, fig.width=7, fig.height=8}
+
+# Categorizing genes as upregulated, downregulated, or non-significant based on adjusted p-value and log2 fold change
+deseq_arranged <- deseq_arranged %>%
+  mutate(reg = case_when(
+    padj < 0.1 & log2FoldChange > 0 ~ "up",
+    padj < 0.1 & log2FoldChange < 0 ~ "down",
+    TRUE ~ "n.s."))
+
+# Creating a label for significantly differentially expressed genes with a log2 fold change greater than 2
+deseq_arranged <- deseq_arranged %>%
+  mutate(label = ifelse(reg != "n.s." & log2FoldChange > 2, gene_id, NA))
+
+# Generating a volcano plot
+vol_plt <- ggplot(deseq_arranged, aes(x = log2FoldChange, y = -log10(padj), fill = reg)) +
+  geom_point(shape = 21, size = 2, color = "black") +  # Adds points with specific shape and size
+  scale_fill_manual(values = c('up' = 'maroon', 'down' = 'lightblue', 'n.s.' = 'white')) +  # Defines fill colors
+  geom_vline(xintercept = 0) +  # Adds vertical line at log2FoldChange = 0
+  geom_hline(yintercept = -log10(0.1), linetype = "dotted") +  # Adds horizontal line at -log10(padj) = 1
+  labs(title = 'Diff. Expressed Genes (Cancer vs. Normal)',
+       x = 'Fold change (log2)',
+       y = 'Adjusted p-value (-log10)',
+       fill = "Regulation") +  # Adds plot title, axis labels and legend title
+  theme_bw() +
+  theme(
+    legend.position = c(0.9, 0.9),  # Adjusts legend position
+    legend.title = element_text(family = "Arial"),  # Customizes legend title
+    legend.text = element_text(size = 11, family = "Arial"),  # Customizes legend text
+    legend.background = element_rect(fill = "white", color = "black"),  # Customizes legend background
+    plot.title = element_text(size = 16, family = "Arial"),  # Customizes plot title
+    axis.text = element_text(size = 14, family = "Arial"),  # Customizes axis text
+    axis.title = element_text(size = 16, family = "Arial", face = "bold"),  # Customizes axis titles
+    axis.ticks.length = unit(0.2, "cm"),  # Sets length of axis ticks
+    panel.grid = element_blank(), # Removes panel grid lines
+    panel.border = element_rect(linewidth = 1.5)
+  ) +
+  geom_label_repel(aes(label = label),  # Adds repelled labels for significant genes
+                   box.padding = 0.3, max.overlaps = Inf, color = "black", fill = "white",
+                   segment.color = 'black', segment.size = 0.5, min.segment.length = 0)
+
+print(vol_plt)
+```
+
+<br style="line-height: .1;">
+
+### Heatmaps
+
+Fixing the code provided to generate the **heatmap**:
+
+```{r Code: Heatmap, fig.width=6, fig.height=9}
+# Extracting top 20 significant results based on adjusted p-values
+deseq2_res_f <- dataset_deseq %>%
+  slice_min(order_by = padj, n = 20) 
+
+# Selecting gene_id and columns 9 to 14, pivot longer for plotting
+deseq2_res_f %>%
+  dplyr::select(gene_id, 9:14) %>%
+  pivot_longer(cols = 2:7, names_to = "condition", values_to = "counts") %>%
+  
+  # Create a plot for visualization
+  ggplot(aes(x = condition, y = gene_id, fill = log2(counts), label = round(log2(counts), digits = 1))) +
+  geom_tile(color = "black") +  # Adds tiled representation
+  geom_text(size = 4) +  # Adds text labels with adjusted size
+  coord_cartesian(expand = FALSE) +  # Ensures no expansion in cartesian coordinates
+  scale_fill_distiller(palette = "Purples", direction = 1, breaks = c(2.5, 7.5, 12.5)) +  # Defines fill colors
+  labs(x = "Sample", y = "Gene IDs", fill = "Counts (log2)") +  # Defines axis and legend labels
+  theme_minimal() +  # Uses a minimal theme
+  theme(
+    legend.position = "top",  # Positions legend at the top
+    legend.title = element_text(size = 13),  # Customizes legend title
+    legend.ticks = element_blank(),  # Removes legend ticks
+    axis.text = element_text(size = 11, colour = "black"),  # Customizes axis text
+    axis.title = element_text(size = 15, face = "bold"),  # Customizes axis titles
+    panel.border = element_rect(linewidth = 3, fill = FALSE)  # Adds panel borders
+  )
+
+```
